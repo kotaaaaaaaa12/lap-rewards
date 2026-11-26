@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // The Worker name must match the Worker name configured in Workers Builds.
+  "name": "lap-rewards",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+
+  // Generates the PNG app icons before every deploy (no dependencies, see the script).
+  "build": { "command": "node scripts/make-icons.mjs" },
+
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Only API calls invoke the Worker script; everything else is static.
+    "run_worker_first": ["/api/*"]
+  },
+
+  // No IDs on purpose: Wrangler creates these resources on the first deploy
+  // (automatic provisioning, wrangler >= 4.45.0) and keeps them linked afterwards.
+  "d1_databases": [{ "binding": "DB" }],
+  "r2_buckets": [{ "binding": "BACKUPS" }],
+
+  // Daily backup to R2 at 18:00 UTC (03:00 JST).
+  "triggers": { "crons": ["0 18 * * *"] },
+
+  // Keep Worker logs in the dashboard (Workers & Pages > lap-rewards > Observability).
+  "observability": { "enabled": true },
+
+  "vars": {
+    "BACKUP_RETENTION_DAYS": "30",
+    "PBKDF2_ITERATIONS": "100000"
+  }
+}
