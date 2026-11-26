@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LAP Rewards">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f46e5"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs>
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a2862"/><stop offset="1" stop-color="#2c6bf0"/></linearGradient></defs>
   <rect width="512" height="512" rx="112" fill="url(#g)"/>
   <circle cx="256" cy="256" r="154" fill="#ffd64f"/>
   <circle cx="256" cy="256" r="126" fill="none" stroke="#f0aa14" stroke-width="6"/>

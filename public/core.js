@@ -216,8 +216,56 @@ function txRow(t0, opts) {
       o.canCancel && o.canCancel(t0) ? h('button', { class: 'btn small ghost', type: 'button', onclick: () => o.onCancel(t0) }, t('Cancel')) : null));
 }
 
-function field(label, input, help) {
-  return h('div', { class: 'field' }, h('label', { for: input.id }, label), input, help ? h('small', null, help) : null);
+function field(label, inp, help) {
+  return h('div', { class: 'field' }, h('label', { for: inp.id }, label), inputBox(inp), help ? h('small', null, help) : null);
+}
+
+// ---------- icons (inline SVG, so no external icon font is needed) ----------
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const ICONS = {
+  user: [['path', { d: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2' }], ['circle', { cx: 12, cy: 7, r: 4 }]],
+  users: [['path', { d: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2' }], ['circle', { cx: 9, cy: 7, r: 4 }], ['path', { d: 'M23 21v-2a4 4 0 0 0-3-3.87' }], ['path', { d: 'M16 3.13a4 4 0 0 1 0 7.75' }]],
+  eye: [['path', { d: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' }], ['circle', { cx: 12, cy: 12, r: 3 }]],
+  'eye-off': [['path', { d: 'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24' }], ['line', { x1: 1, y1: 1, x2: 23, y2: 23 }]],
+  home: [['path', { d: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' }], ['polyline', { points: '9 22 9 12 15 12 15 22' }]],
+  gift: [['polyline', { points: '20 12 20 22 4 22 4 12' }], ['rect', { x: 2, y: 7, width: 20, height: 5 }], ['line', { x1: 12, y1: 22, x2: 12, y2: 7 }], ['path', { d: 'M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z' }], ['path', { d: 'M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z' }]],
+  clock: [['circle', { cx: 12, cy: 12, r: 10 }], ['polyline', { points: '12 6 12 12 16 14' }]],
+  grid: [['rect', { x: 3, y: 3, width: 7, height: 7 }], ['rect', { x: 14, y: 3, width: 7, height: 7 }], ['rect', { x: 14, y: 14, width: 7, height: 7 }], ['rect', { x: 3, y: 14, width: 7, height: 7 }]],
+  award: [['circle', { cx: 12, cy: 8, r: 7 }], ['polyline', { points: '8.21 13.89 7 23 12 20 17 23 15.79 13.88' }]],
+  shield: [['path', { d: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' }]],
+};
+
+function svg(name) {
+  const el = document.createElementNS(SVG_NS, 'svg');
+  const attrs = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'icon', 'aria-hidden': 'true', focusable: 'false' };
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  for (const [tag, a] of ICONS[name] || []) {
+    const child = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(a)) child.setAttribute(k, String(v));
+    el.append(child);
+  }
+  return el;
+}
+
+/** Eye button that shows or hides a password field. */
+function eyeButton(inp) {
+  const btn = h('button', { type: 'button', class: 'eye', 'aria-label': t('Show password') }, svg('eye-off'));
+  btn.addEventListener('click', () => {
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-label', t(show ? 'Hide password' : 'Show password'));
+    clear(btn);
+    btn.append(svg(show ? 'eye' : 'eye-off'));
+  });
+  return btn;
+}
+
+/** Wraps an input in the rounded field with a trailing icon (or the eye button for passwords). */
+function inputBox(inp, iconName) {
+  const box = h('div', { class: 'input-box' }, inp);
+  if (inp.type === 'password') box.append(eyeButton(inp));
+  else if (iconName) box.append(h('span', { class: 'ico' }, svg(iconName)));
+  return box;
 }
 
 function input(id, type, extra) {

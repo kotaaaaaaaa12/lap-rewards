@@ -73,6 +73,14 @@ const JA = {
 
   // ----- sign in / register / setup -----
   'Sign in': 'ログイン',
+  'Show password': 'パスワードを表示',
+  'Hide password': 'パスワードを隠す',
+  'Forgot password?': 'パスワードをお忘れですか？',
+  'Forgot your password?': 'パスワードをお忘れですか？',
+  'Ask your teacher or an administrator to reset your password. They will give you a temporary password.': '先生または管理者にパスワードのリセットを依頼してください。仮パスワードを教えてもらえます。',
+  'No account yet?': 'アカウントをお持ちでないですか？',
+  'Create one': '新規登録はこちら',
+  'Already have an account?': 'すでにアカウントをお持ちですか？',
   'Sign out': 'ログアウト',
   'Create account': 'アカウント作成',
   'Earn points for learning. Exchange them for rewards.': '学んでポイントをためよう。ポイントは景品と交換できます。',

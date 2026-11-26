@@ -9,8 +9,8 @@ import { dirname, join } from 'node:path';
 
 const OUT = process.argv[2] || join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'icons');
 
-const TOP = [79, 70, 229];
-const BOTTOM = [124, 58, 237];
+const TOP = [10, 40, 98];
+const BOTTOM = [44, 107, 240];
 const COIN = [255, 214, 79];
 const RIM = [240, 170, 20];
 const WHITE = [255, 255, 255];

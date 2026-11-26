@@ -29,7 +29,7 @@ export function makeWindow() {
   const app = new FakeEl('div'); const toastEl = new FakeEl('div');
   const document = {
     documentElement: {} as Record<string, string>,
-    body, createElement: (t: string) => new FakeEl(t), createTextNode: (d: string) => new FakeText(d),
+    body, createElement: (t: string) => new FakeEl(t), createElementNS: (_ns: string, t: string) => new FakeEl(t), createTextNode: (d: string) => new FakeText(d),
     getElementById: (id: string) => (id === 'app' ? app : toastEl), querySelector: () => null,
   };
   const ctx: any = {
