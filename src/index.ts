@@ -1,4 +1,4 @@
-import type { Env } from './types.ts';
+import type { Env, SessionUser } from './types.ts';
 import { ensureSchema } from './db.ts';
 import { loadSession } from './auth.ts';
 import { HttpError, json } from './http.ts';
@@ -22,6 +22,7 @@ export async function handleRequest(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url);
   if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req);
 
+  let user: SessionUser | null = null;
   try {
     // CSRF defence in depth (cookies are also SameSite=Strict): state-changing requests
     // must come from this same origin.
@@ -29,7 +30,7 @@ export async function handleRequest(req: Request, env: Env): Promise<Response> {
       throw new HttpError(403, 'bad_origin', 'Cross-origin requests are not allowed.');
     }
     await ensureSchema(env.DB);
-    const user = await loadSession(env, req);
+    user = await loadSession(env, req);
     const ctx: Ctx = {
       req, env, url, params: {}, user,
       ip: req.headers.get('cf-connecting-ip') ?? 'unknown',
@@ -40,7 +41,9 @@ export async function handleRequest(req: Request, env: Env): Promise<Response> {
   } catch (e) {
     if (e instanceof HttpError) return json({ error: { code: e.code, message: e.message } }, e.status);
     console.error('Unhandled error', e);
-    return json({ error: { code: 'internal_error', message: 'Something went wrong.' } }, 500);
+    // Administrators also get the underlying error text, so failures can be diagnosed from the UI.
+    const detail = user && user.role === 'admin' ? String((e as Error)?.message ?? e).slice(0, 300) : undefined;
+    return json({ error: { code: 'internal_error', message: 'Something went wrong.', detail } }, 500);
   }
 }
 

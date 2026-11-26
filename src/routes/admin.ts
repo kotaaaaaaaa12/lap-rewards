@@ -37,7 +37,7 @@ export function adminRoutes(r: Router) {
     const q = (c.url.searchParams.get('q') ?? '').trim().slice(0, 50);
     const limit = qInt(c.url, 'limit', 50, 1, 200);
     const offset = qInt(c.url, 'offset', 0, 0, 100000);
-    const where: string[] = ['1 = 1'];
+    const where: string[] = [`u.login_id NOT LIKE '~deleted-%'`]; // hide removed (anonymized) accounts
     const binds: unknown[] = [];
     if (role) {
       if (!['student', 'teacher', 'admin'].includes(role)) throw bad('role is invalid.');
@@ -141,6 +141,61 @@ export function adminRoutes(r: Router) {
     return json({ temporary_password: temp });
   });
 
+  // Permanently remove an account. Accounts with no history are deleted outright. Accounts that appear
+  // in the append-only ledger, redemptions or activity log cannot lose those rows, so they are
+  // anonymized instead: the person can no longer sign in, the name and login ID are gone, and the
+  // login ID becomes available again.
+  r.delete('/api/admin/users/:id', admin, async (c) => {
+    const id = Number(c.params.id);
+    const body = await c.body();
+    const db = c.env.DB;
+    const target = await db
+      .prepare('SELECT id, login_id, role FROM users WHERE id = ?1')
+      .bind(id)
+      .first<{ id: number; login_id: string; role: string }>();
+    if (!target || target.login_id.startsWith('~deleted-')) throw notFound('User not found.');
+    if (id === c.user!.id) throw bad('You cannot delete your own account.');
+    if (typeof body.login_id !== 'string' || body.login_id.trim().toLowerCase() !== target.login_id) {
+      throw bad('The login ID you typed does not match.');
+    }
+    if (target.role === 'admin') {
+      const other = await db
+        .prepare(`SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND is_active = 1 AND id <> ?1`)
+        .bind(id)
+        .first<{ n: number }>();
+      if (!other || other.n < 1) throw conflict('last_admin', 'At least one active administrator must remain.');
+    }
+    const pending = await db
+      .prepare(`SELECT COUNT(*) AS n FROM redemptions WHERE student_id = ?1 AND status = 'pending'`)
+      .bind(id)
+      .first<{ n: number }>();
+    if ((pending?.n ?? 0) > 0) {
+      throw conflict('has_pending_redemptions', 'This student has pending redemptions. Cancel or complete them first.');
+    }
+    const hist = await db
+      .prepare(
+        `SELECT (SELECT COUNT(*) FROM point_transactions WHERE student_id = ?1 OR operator_id = ?1)
+              + (SELECT COUNT(*) FROM redemptions WHERE student_id = ?1)
+              + (SELECT COUNT(*) FROM audit_logs WHERE actor_id = ?1) AS n`,
+      )
+      .bind(id)
+      .first<{ n: number }>();
+    const mode = (hist?.n ?? 0) > 0 ? 'anonymized' : 'deleted';
+    await db.batch([
+      deleteUserSessions(c.env, id),
+      mode === 'deleted'
+        ? db.prepare('DELETE FROM users WHERE id = ?1').bind(id)
+        : db
+            .prepare(
+              `UPDATE users SET login_id = '~deleted-' || id, nickname = 'Deleted user', password_hash = '!',
+                 is_active = 0, class_id = NULL, must_change_password = 0 WHERE id = ?1`,
+            )
+            .bind(id),
+      auditStmt(db, c.user!.id, 'user.delete', 'user', id, { mode }),
+    ]);
+    return json({ ok: true, mode });
+  });
+
   // ---------------- manual point adjustment ----------------
   r.post('/api/admin/points/adjust', admin, async (c) => {
     const body = await c.body();
@@ -236,11 +291,11 @@ export function adminRoutes(r: Router) {
     const res = await db.batch([
       insertRedeemRefund(db, { redemptionId: id, reason, operatorId: c.user!.id }),
       db
-        .prepare(`UPDATE redemptions SET status = 'cancelled', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?1 AND status = 'pending'`)
+        .prepare(`UPDATE redemptions SET status = 'cancelled', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?1 AND status IN ('pending','completed')`)
         .bind(id),
       auditStmt(db, c.user!.id, 'redemption.cancel', 'redemption', id, { reason }, `redeem_cancel:${id}`),
     ]);
-    if (!changed(res[0]) || !changed(res[1])) throw conflict('not_pending', 'Only pending redemptions can be cancelled.');
+    if (!changed(res[0]) || !changed(res[1])) throw conflict('not_pending', 'Only pending or completed redemptions can be cancelled.');
     return json({ ok: true });
   });
 

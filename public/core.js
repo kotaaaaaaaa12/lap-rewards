@@ -42,8 +42,10 @@ async function api(method, path, body) {
   let data = null;
   try { data = await res.json(); } catch { /* empty body */ }
   if (!res.ok) {
-    const err = new Error(t((data && data.error && data.error.message) || 'Something went wrong. Please try again.'));
-    err.code = data && data.error && data.error.code;
+    const info = data && data.error;
+    const err = new Error(info && info.message ? t(info.message) : t('Server error (HTTP {status}). Please try again.', { status: res.status }));
+    err.code = info && info.code;
+    err.detail = info && info.detail; // only sent to administrators, for diagnosing server problems
     err.status = res.status;
     throw err;
   }
@@ -84,7 +86,7 @@ function handleApiError(e) {
     state.user.must_change_password = true;
     render();
   } else {
-    toast(e.message || t('Something went wrong.'), 'error');
+    toast((e.message || t('Something went wrong.')) + (e.detail ? ' [' + e.detail + ']' : ''), 'error');
   }
 }
 
@@ -178,11 +180,13 @@ const STATUS_LABELS = { pending: 'Pending', completed: 'Completed', cancelled: '
 const ACTION_LABELS = {
   'setup.first_admin': 'Setup: first administrator', 'user.create': 'Account created', 'user.update': 'Account updated',
   'user.reset_password': 'Password reset', 'class.create': 'Class created', 'class.rename': 'Class renamed',
-  'class.delete': 'Class deleted', 'class.assign': 'Students assigned to class', 'points.award': 'Points awarded',
+  'class.delete': 'Class deleted', 'user.delete': 'Account deleted', 'class.assign': 'Students assigned to class', 'points.award': 'Points awarded',
   'points.adjust': 'Points adjusted', 'points.cancel': 'Award cancelled', 'reward.create': 'Reward created',
   'reward.update': 'Reward updated', 'redemption.complete': 'Redemption completed', 'redemption.cancel': 'Redemption cancelled',
   'backup.run': 'Backup run',
 };
+/** Anonymized accounts are stored with an English placeholder name; show it in the current language. */
+const nm = (n) => (n === 'Deleted user' ? t('Deleted user') : n);
 const typeLabel = (x) => t(TYPE_LABELS[x] || x);
 const statusLabel = (x) => t(STATUS_LABELS[x] || x);
 const actionLabel = (x) => (ACTION_LABELS[x] ? t(ACTION_LABELS[x]) : x);
@@ -197,13 +201,13 @@ function txRow(t0, opts) {
   // System-generated reasons are stored in English; show them in the current language.
   const reason = t0.type === 'redeem' && t0.reason.startsWith('Redeemed: ')
     ? t('Redeemed: {name}', { name: t0.reason.slice('Redeemed: '.length) }) : t0.reason;
-  const meta = [fmtDate(t0.created_at), t('by {name}', { name: t0.operator_nickname })];
+  const meta = [fmtDate(t0.created_at), t('by {name}', { name: nm(t0.operator_nickname) })];
   if (cancelled) meta.push(t('cancelled'));
   if (t0.ref_transaction_id) meta.push(t('refers to #{id}', { id: t0.ref_transaction_id }));
   meta.push('#' + t0.id);
   return h('li', { class: 'row tx' + (cancelled ? ' struck' : '') },
     h('div', { class: 'row-main' },
-      h('div', { class: 'row-title' }, o.showStudent ? t0.student_nickname + ' ' : '', o.showStudent ? h('span', { class: 'muted' }, '@' + t0.student_login_id) : null),
+      h('div', { class: 'row-title' }, o.showStudent ? nm(t0.student_nickname) + ' ' : '', o.showStudent ? h('span', { class: 'muted' }, '@' + t0.student_login_id) : null),
       h('div', { class: 'row-sub' }, typeLabel(t0.type), ' · ', reason),
       h('div', { class: 'row-meta' }, meta.join(' · '))),
     h('div', { class: 'row-side' },

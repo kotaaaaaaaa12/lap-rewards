@@ -85,7 +85,14 @@ async function viewAdminUsers(root) {
             const next = !u.is_active;
             if (!next && !(await confirmModal(t('Deactivate account'), t('Deactivate {name}? They will not be able to sign in.', { name: u.nickname }), t('Deactivate'), true))) return;
             if (await act(null, () => api('PATCH', '/admin/users/' + u.id, { is_active: next }))) { toast(next ? t('Account activated.') : t('Account deactivated.'), 'success'); load(); }
-          } }, u.is_active ? t('Deactivate') : t('Activate')) : null));
+          } }, u.is_active ? t('Deactivate') : t('Activate')) : null,
+          !me ? h('button', { class: 'btn small ghost', type: 'button', onclick: async () => {
+            const v = await formModal(t('Delete account'), [{ name: 'login_id', label: t('Type the login ID to confirm: {id}', { id: u.login_id }), max: 64 }], t('Delete account'),
+              t('This permanently removes {name}. If the account has any history, the history is kept but made anonymous. This cannot be undone.', { name: u.nickname }));
+            if (!v) return;
+            const res3 = await act(null, () => api('DELETE', '/admin/users/' + u.id, { login_id: v.login_id.trim() }));
+            if (res3) { toast(res3.mode === 'deleted' ? t('Account deleted.') : t('Account removed. Its history was kept anonymously.'), 'success'); load(); }
+          } }, t('Delete')) : null));
     })));
   };
   search.addEventListener('input', debounce(load, 250));
@@ -141,7 +148,7 @@ async function viewAdminRedemptions(root, query) {
   append(root, [
     h('div', { class: 'section-head' }, h('h2', null, t('Redemptions'))), adminTabs('#/admin/redemptions'), filter,
     redemptions.length ? h('ul', { class: 'list' }, redemptions.map((r) => h('li', { class: 'row' },
-      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, r.reward_name), h('div', { class: 'row-sub' }, r.student_nickname, ' ', h('span', { class: 'muted' }, '@' + r.student_login_id)), h('div', { class: 'row-meta' }, fmtDate(r.created_at), ' · ', t('{n} pts', { n: r.cost_at_request }))),
+      h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, r.reward_name), h('div', { class: 'row-sub' }, nm(r.student_nickname), ' ', h('span', { class: 'muted' }, '@' + r.student_login_id)), h('div', { class: 'row-meta' }, fmtDate(r.created_at), ' · ', t('{n} pts', { n: r.cost_at_request }))),
       h('div', { class: 'row-side button-col' }, chip(statusLabel(r.status), r.status),
         r.status === 'pending' ? [
           h('button', { class: 'btn small primary', type: 'button', onclick: async () => {
@@ -150,7 +157,12 @@ async function viewAdminRedemptions(root, query) {
           h('button', { class: 'btn small ghost', type: 'button', onclick: async () => {
             const v = await formModal(t('Cancel redemption'), [{ name: 'reason', label: t('Reason'), max: 200 }], t('Cancel and refund'), t('{n} points will be returned to {name}.', { n: r.cost_at_request, name: r.student_nickname }));
             if (v && (await act(null, () => api('POST', `/admin/redemptions/${r.id}/cancel`, { reason: v.reason.trim() })))) { toast(t('Cancelled and refunded.'), 'success'); render(); }
-          } }, t('Cancel'))] : null)))) : empty(t('Nothing here.')),
+          } }, t('Cancel'))] : null,
+        r.status === 'completed' ? h('button', { class: 'btn small ghost', type: 'button', onclick: async () => {
+          const v = await formModal(t('Invalidate redemption'), [{ name: 'reason', label: t('Reason'), max: 200 }], t('Invalidate and refund'),
+            t('{n} points will be returned to {name}. The reward was already marked as handed out.', { n: r.cost_at_request, name: nm(r.student_nickname) }));
+          if (v && (await act(null, () => api('POST', `/admin/redemptions/${r.id}/cancel`, { reason: v.reason.trim() })))) { toast(t('Invalidated and refunded.'), 'success'); render(); }
+        } }, t('Invalidate')) : null)))) : empty(t('Nothing here.')),
   ]);
 }
 

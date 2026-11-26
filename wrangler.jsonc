@@ -5,6 +5,9 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
 
+  // Generates the PNG app icons before every deploy (no dependencies, see the script).
+  "build": { "command": "node scripts/make-icons.mjs" },
+
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
@@ -20,6 +23,9 @@
 
   // Daily backup to R2 at 18:00 UTC (03:00 JST).
   "triggers": { "crons": ["0 18 * * *"] },
+
+  // Keep Worker logs in the dashboard (Workers & Pages > lap-rewards > Observability).
+  "observability": { "enabled": true },
 
   "vars": {
     "BACKUP_RETENTION_DAYS": "30",

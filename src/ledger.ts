@@ -56,7 +56,7 @@ export function insertCancel(
     .bind(...binds);
 }
 
-/** Refunds a pending redemption. */
+/** Refunds a pending or completed redemption (an administrator invalidating it). */
 export function insertRedeemRefund(
   db: D1Database,
   p: { redemptionId: number; reason: string; operatorId: number },
@@ -67,7 +67,7 @@ export function insertRedeemRefund(
        SELECT r.student_id, r.cost_at_request, u.balance + r.cost_at_request,
               'redeem_cancel', ?2, ?3, r.transaction_id, ?4
        FROM redemptions r JOIN users u ON u.id = r.student_id
-       WHERE r.id = ?1 AND r.status = 'pending'
+       WHERE r.id = ?1 AND r.status IN ('pending','completed')
          AND NOT EXISTS (SELECT 1 FROM point_transactions WHERE idempotency_key = ?4)`,
     )
     .bind(p.redemptionId, p.reason, p.operatorId, `redeem_cancel:${p.redemptionId}`);

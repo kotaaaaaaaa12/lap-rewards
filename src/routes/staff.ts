@@ -75,7 +75,7 @@ export function staffRoutes(r: Router) {
     const classParam = c.url.searchParams.get('class_id') ?? '';
     const limit = qInt(c.url, 'limit', 50, 1, 200);
     const offset = qInt(c.url, 'offset', 0, 0, 100000);
-    const where: string[] = [`u.role = 'student'`];
+    const where: string[] = [`u.role = 'student'`, `u.login_id NOT LIKE '~deleted-%'`];
     const binds: unknown[] = [];
     if (c.url.searchParams.get('include_inactive') !== '1') where.push('u.is_active = 1');
     if (q) {

@@ -162,8 +162,13 @@ test('rewards and redemptions: redeem, insufficient points, duplicates, cancel/r
   await alice.post('/api/me/redemptions', { reward_id: rw.data.id, key: key() });
   const p2 = (await admin.get('/api/admin/redemptions?status=pending')).data.redemptions[0];
   assert.equal((await admin.post(`/api/admin/redemptions/${p2.id}/complete`)).status, 200);
-  assert.equal((await admin.post(`/api/admin/redemptions/${p2.id}/cancel`, { reason: 'x' })).status, 409, 'completed cannot be cancelled');
   assert.equal((await alice.get('/api/me')).data.user.balance, 20);
+  // An administrator can invalidate a redemption that was already completed: points come back, once.
+  assert.equal((await admin.post(`/api/admin/redemptions/${p2.id}/cancel`, { reason: 'Handed out by mistake' })).status, 200);
+  assert.equal((await alice.get('/api/me')).data.user.balance, 50, 'refunded after invalidation');
+  assert.equal((await admin.post(`/api/admin/redemptions/${p2.id}/cancel`, { reason: 'again' })).status, 409, 'cannot be invalidated twice');
+  assert.equal((await admin.post(`/api/admin/redemptions/${p2.id}/complete`)).status, 409, 'cancelled cannot be completed');
+  assert.equal((await alice.get('/api/me')).data.user.balance, 50);
 
   await admin.patch(`/api/admin/rewards/${rw.data.id}`, { is_active: false });
   assert.equal((await alice.get('/api/rewards')).data.rewards.length, 0);
