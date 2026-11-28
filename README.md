@@ -35,17 +35,19 @@ The schema lives in `src/migrations.ts`. The Worker applies any pending migratio
 | `BACKUP_RETENTION_DAYS` | `30` | Backups older than this are deleted (the newest is always kept). |
 | `PBKDF2_ITERATIONS` | `100000` | Password hashing cost. 100,000 is the maximum Workers allow. Already-stored hashes keep the cost they were created with. |
 
-The backup schedule is `triggers.crons` (default `0 18 * * *` = 18:00 UTC = 03:00 JST).
+The backup schedule is `triggers.crons` (default `0 18 * * *` = 18:00 UTC = 03:00 JST). The second schedule there (`* * * * *`, every minute) delivers push notifications; keep it.
+
+Push notifications need no setup. Optional overrides (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`) are described in [docs/PUSH-NOTIFICATIONS.md](docs/PUSH-NOTIFICATIONS.md).
 
 ## Languages
 
 The interface is available in **English and Japanese**. It follows the browser language on first visit, and users can switch at any time (language selector on the sign-in screen and on the Account page); the choice is remembered in the browser.
 
-Translations live in `public/i18n.js`. The English text is the key, so adding a language or a string is one dictionary entry. `npm test` fails if any string in the code (or any static server message) has no Japanese translation.
+Translations live in `public/i18n.js` (the notification feature adds its own entries in `public/i18n-push.js`). The English text is the key, so adding a language or a string is one dictionary entry. `npm test` fails if any string in the code (or any static server message) has no Japanese translation.
 
 ## Roles
 
-- **Student**: self-registers, sees balance and history, redeems rewards, changes password.
+- **Student**: self-registers, sees balance and history, redeems rewards, changes password, can turn on push notifications.
 - **Teacher**: searches students (by name or login ID, or by class), awards points to one or many students, cancels awards they made, creates and edits classes, assigns students to classes.
 - **Administrator**: everything a teacher can do, plus accounts (create, reset password, deactivate, change role, delete), manual point adjustments, rewards, redemptions, activity log, backups. An administrator can also cancel any award, and can invalidate a redemption even after it was completed (the points are returned).
 
@@ -55,6 +57,10 @@ Translations live in `public/i18n.js`. The English text is the key, so adding a 
 - **Delete** is permanent. An account with no history is removed completely. An account that appears in the point ledger, redemptions or activity log cannot lose those rows (the ledger is append-only by design), so it is **anonymized**: the name and login ID are removed, sign-in is impossible, and the login ID can be reused. Entries in the activity log written before the deletion may still contain that login ID as text. A student with pending redemptions cannot be deleted until those are cancelled or completed, and the last active administrator cannot be deleted.
 
 All permissions are enforced on the server.
+
+## Push notifications
+
+Students can turn on notifications on a device (Account → Notifications) and are told when points are awarded, deducted, corrected or cancelled, and when a reward redemption is completed or cancelled. Each kind can be switched off separately, and the app works the same without notifications. On iPhone and iPad the app must first be added to the Home Screen. Details, privacy notes and troubleshooting: [docs/PUSH-NOTIFICATIONS.md](docs/PUSH-NOTIFICATIONS.md).
 
 ## Local development
 
@@ -87,5 +93,4 @@ See [docs/BACKUP-RESTORE.md](docs/BACKUP-RESTORE.md).
 
 ## Status
 
-Implemented: accounts, roles, classes, points (single, bulk, cancel, adjust), rewards and redemptions, administration, activity log, PWA shell, daily backups, English/Japanese interface.
-Not yet implemented: Web Push notifications and notification preferences.
+Implemented: accounts, roles, classes, points (single, bulk, cancel, adjust), rewards and redemptions, administration, activity log, PWA shell, daily backups, English/Japanese interface, Web Push notifications with per-category preferences.

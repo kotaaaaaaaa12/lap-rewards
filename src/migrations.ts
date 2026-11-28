@@ -114,4 +114,54 @@ export const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    // Web Push: devices, per-person preferences, and an outbox that is drained by the Worker.
+    // Notifications are generated from rows that already exist (the append-only ledger and the
+    // audit log), so no existing route needs to know about them. Cursors in app_settings remember
+    // how far those tables have been processed.
+    id: '0002_push',
+    statements: [
+      `CREATE TABLE app_settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )`,
+
+      `CREATE TABLE push_subscriptions (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        endpoint   TEXT NOT NULL UNIQUE,
+        p256dh     TEXT NOT NULL,
+        auth       TEXT NOT NULL,
+        lang       TEXT NOT NULL DEFAULT 'en' CHECK (lang IN ('en','ja')),
+        created_at TEXT NOT NULL DEFAULT (${NOW}),
+        updated_at TEXT NOT NULL DEFAULT (${NOW})
+      )`,
+      `CREATE INDEX idx_push_sub_user ON push_subscriptions(user_id)`,
+
+      // No row means "everything on".
+      `CREATE TABLE notification_prefs (
+        user_id     INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        points      INTEGER NOT NULL DEFAULT 1 CHECK (points IN (0,1)),
+        redemptions INTEGER NOT NULL DEFAULT 1 CHECK (redemptions IN (0,1))
+      )`,
+
+      // One row = one message for one device.
+      `CREATE TABLE push_outbox (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        subscription_id INTEGER NOT NULL REFERENCES push_subscriptions(id) ON DELETE CASCADE,
+        kind            TEXT NOT NULL,
+        data            TEXT NOT NULL DEFAULT '{}',
+        attempts        INTEGER NOT NULL DEFAULT 0,
+        next_attempt_at INTEGER NOT NULL,
+        created_at      INTEGER NOT NULL
+      )`,
+      `CREATE INDEX idx_push_outbox_due ON push_outbox(next_attempt_at, id)`,
+
+      // Existing history must never be announced: start after the newest rows.
+      `INSERT INTO app_settings (key, value)
+         SELECT 'push_tx_cursor', CAST(COALESCE(MAX(id), 0) AS TEXT) FROM point_transactions`,
+      `INSERT INTO app_settings (key, value)
+         SELECT 'push_audit_cursor', CAST(COALESCE(MAX(id), 0) AS TEXT) FROM audit_logs`,
+    ],
+  },
 ];

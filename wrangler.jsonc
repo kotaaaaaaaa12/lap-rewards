@@ -21,8 +21,9 @@
   "d1_databases": [{ "binding": "DB" }],
   "r2_buckets": [{ "binding": "BACKUPS" }],
 
-  // Daily backup to R2 at 18:00 UTC (03:00 JST).
-  "triggers": { "crons": ["0 18 * * *"] },
+  // Daily backup to R2 at 18:00 UTC (03:00 JST), and a one-minute tick that delivers push notifications
+  // (see src/push.ts; the cron string must match PUSH_CRON there).
+  "triggers": { "crons": ["0 18 * * *", "* * * * *"] },
 
   // Keep Worker logs in the dashboard (Workers & Pages > lap-rewards > Observability).
   "observability": { "enabled": true },

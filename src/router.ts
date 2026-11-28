@@ -1,6 +1,11 @@
 import type { Env, SessionUser, Role } from './types.ts';
 import { HttpError, bad, forbidden } from './http.ts';
 
+/** The part of ExecutionContext that handlers need (absent in tests, where work is awaited inline). */
+export interface Exec {
+  waitUntil(p: Promise<unknown>): void;
+}
+
 export interface Ctx {
   req: Request;
   env: Env;
@@ -8,6 +13,7 @@ export interface Ctx {
   params: Record<string, string>;
   user: SessionUser | null;
   ip: string;
+  exec?: Exec;
   body<T = Record<string, unknown>>(): Promise<T>;
 }
 

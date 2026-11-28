@@ -4,6 +4,7 @@
 async function viewHome(root) {
   const [me, tx, red] = await Promise.all([api('GET', '/me'), api('GET', '/me/transactions?limit=5'), api('GET', '/me/redemptions')]);
   state.user = me.user;
+  if (typeof pushSync === 'function') pushSync(); // drops a notification subscription left by another account
   const pending = red.redemptions.filter((r) => r.status === 'pending');
   append(root, [
     h('section', { class: 'balance-card' },
@@ -91,10 +92,14 @@ async function viewAccount(root) {
         h('dt', null, t('Role')), h('dd', null, t(u.role)),
         u.role === 'student' ? [h('dt', null, t('Class')), h('dd', null, u.class_name || t('Not assigned'))] : null,
         h('dt', null, t('Language')), h('dd', null, langPicker()))),
+    u.role === 'student' && typeof pushCard === 'function' ? [h('h3', null, t('Notifications')), pushCard()] : null,
     h('h3', null, t('Change password')),
     passwordForm(false),
     h('button', { class: 'btn ghost block', type: 'button', onclick: async (ev) => {
-      await act(ev.currentTarget, () => api('POST', '/auth/logout', {}));
+      await act(ev.currentTarget, async () => {
+        if (typeof pushOnSignOut === 'function') await pushOnSignOut(); // this device stops receiving this person's notifications
+        return api('POST', '/auth/logout', {});
+      });
       state.user = null; location.hash = ''; render();
     } }, t('Sign out')),
   ]);

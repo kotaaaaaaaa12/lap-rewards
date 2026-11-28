@@ -9,6 +9,8 @@ const i18nSrc = readFileSync('public/i18n.js', 'utf8');
 const ctx: any = { localStorage: undefined, navigator: {}, document: { documentElement: {} } };
 vm.createContext(ctx);
 vm.runInContext(i18nSrc, ctx);
+// Feature files that add their own entries to the table (they load right after i18n.js in the page).
+for (const f of ['i18n-push.js']) vm.runInContext(readFileSync(`public/${f}`, 'utf8'), ctx);
 const JA: Record<string, string> = vm.runInContext('JA', ctx);
 
 const unescape = (s: string) => s.replace(/\\'/g, "'").replace(/\\\\/g, '\\');
@@ -17,7 +19,7 @@ const ph = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().
 
 function clientKeys(): Map<string, string> {
   const keys = new Map<string, string>();
-  for (const f of readdirSync('public').filter((x) => x.endsWith('.js') && x !== 'i18n.js' && x !== 'sw.js')) {
+  for (const f of readdirSync('public').filter((x) => x.endsWith('.js') && x !== 'i18n.js' && x !== 'i18n-push.js' && x !== 'sw.js')) {
     const src = readFileSync(`public/${f}`, 'utf8');
     const add = (k: string) => keys.set(unescape(k), f);
     for (const m of src.matchAll(new RegExp(`\\bt\\(\\s*${Q}`, 'g'))) add(m[1]);

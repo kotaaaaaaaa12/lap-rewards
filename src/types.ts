@@ -8,6 +8,11 @@ export interface Env {
   SETUP_TOKEN?: string;
   BACKUP_RETENTION_DAYS?: string;
   PBKDF2_ITERATIONS?: string;
+  /** Optional Web Push (VAPID) key pair, base64url. When unset, a pair is generated once and kept in D1. */
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  /** Optional contact sent to push services: a mailto: or https: URL. Defaults to this site's origin. */
+  VAPID_SUBJECT?: string;
 }
 
 export interface SessionUser {
